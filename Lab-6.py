@@ -1,73 +1,61 @@
 import requests
 import hashlib
-import subprocess
 import os
+import subprocess
 
 def main():
+    version = '3.0.17.4'
+
     # Get the expected SHA-256 hash value of the VLC installer
-    expected_sha256 = get_expected_sha256()
+    expected_sha256 = get_expected_sha256(version)
 
-    # Download the VLC installer from the VLC website
-    installer_data = download_installer()
+    # Download (but don't save) the VLC installer from the VLC website
+    installer_data = download_installer(version)
 
-    # Verify the integrity of the downloaded VLC installer
-    if not installer_ok(installer_data, expected_sha256):
-        print("Installer integrity check failed. Aborting.")
-        return
+    # Verify the integrity of the downloaded VLC installer by comparing the
+    # expected and computed SHA-256 hash values
+    if installer_ok(installer_data, expected_sha256):
 
-    # Save the downloaded VLC installer to disk
-    installer_path = save_installer(installer_data)
+        # Save the downloaded VLC installer to disk
+        installer_path = save_installer(installer_data, version)
 
-    # Silently run the VLC installer
-    run_installer(installer_path)
+        # Silently run the VLC installer
+        run_installer(installer_path)
 
-    # Delete the VLC installer from disk
-    delete_installer(installer_path)
+        # Delete the VLC installer from disk
+        delete_installer(installer_path)
 
-def get_expected_sha256():
-    url = "http://download.videolan.org/pub/videolan/vlc/3.0.18/win64/"
-    response = requests.get(url)
+def get_expected_sha256(version):
+    hash_url = f'http://download.videolan.org/pub/videolan/vlc/{version}/win64/vlc-{version}-win64.txt'
+    resp_msg = requests.get(hash_url)
+    if resp_msg.status_code == requests.codes.ok:
+        hash_content = resp_msg.text
+        return hash_content.split()[0]
+    return None
 
-    # Extract the SHA-256 hash value from the response message body
-    expected_hash = None
-    if response.status_code == 200:
-        hash_lines = response.text.splitlines()
-        for line in hash_lines:
-            if "vlc-3.0.18-win64.exe" in line:
-                expected_hash = line.split()[0]
-                break
-
-    return expected_hash
-
-def download_installer():
-    url = "http://download.videolan.org/pub/videolan/vlc/3.0.18/win64/vlc-3.0.17.4-win64.exe"
-    response = requests.get(url)
-    return response.content
+def download_installer(version):
+    installer_url = f'http://download.videolan.org/pub/videolan/vlc/{version}/win64/vlc-{version}-win64.exe'
+    resp_msg = requests.get(installer_url)
+    if resp_msg.status_code == requests.codes.ok:
+        return resp_msg.content
+    return None
 
 def installer_ok(installer_data, expected_sha256):
-    # Calculate the SHA-256 hash value of the downloaded installer file
     installer_hash = hashlib.sha256(installer_data).hexdigest()
-
-    # Compare the computed hash with the expected hash
     return installer_hash == expected_sha256
 
-def save_installer(installer_data):
-    # Save the installer to the system's temporary folder
+def save_installer(installer_data, version):
     temp_folder = os.getenv('TEMP')
-    installer_path = os.path.join(temp_folder, "vlc-3.0.18-win64.exe")
-    with open(installer_path, 'wb') as f:
-        f.write(installer_data)
+    installer_path = os.path.join(temp_folder, f'vlc-{version}-win64.exe')
+    with open(installer_path, 'wb') as file:
+        file.write(installer_data)
     return installer_path
 
 def run_installer(installer_path):
-    # Run the installer silently, suppressing any output to the console
-    command = [installer_path, "/S"]
-    subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run([installer_path, '/L=1033', '/S'])
 
 def delete_installer(installer_path):
-    # Delete the installer file
     os.remove(installer_path)
 
 if __name__ == '__main__':
     main()
-        
