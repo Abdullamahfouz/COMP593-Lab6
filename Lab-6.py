@@ -42,9 +42,9 @@ def download_installer():
         
         return file_content
 def installer_ok(installer_data, expected_sha256):
-   
+    #checks if the hash is correct
     expected_sha256 = hashlib.sha256(installer_data).hexdigest()
-    return expected_sha256
+    return(expected_sha256)
 
 
 def save_installer(installer_data):
@@ -58,7 +58,7 @@ def run_installer(installer_path):
  subprocess.run([installer_path, '/L=1033', '/S'])
 
 def delete_installer(installer_path):
-    # delets the installer
+    # removes the installer
     os.remove(installer_path)
 
 if __name__ == '__main__':
